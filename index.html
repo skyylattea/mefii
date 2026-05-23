@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <link rel="icon" href="data:,">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MISSION: MEFI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="relative min-h-screen flex flex-col justify-center items-center p-4 selection:bg-purple-600 selection:text-white">
+    <div id="status-bar" class="fixed top-4 left-4 z-50 text-[10px] font-game text-blue-500 opacity-70 pointer-events-none">
+        <p>STATUS: <span class="text-green-500">CONNECTED</span></p>
+        <p>PLAYER ID: <span class="text-white">MEFI</span></p>
+    </div>
+
+    <div class="fixed inset-0 stars pointer-events-none z-0"></div>
+    <div class="fixed inset-0 bg-gradient-to-b from-black via-slate-950 to-purple-950/20 pointer-events-none z-0"></div>
+
+    <audio id="snd-click" src="audio/click.wav" preload="auto"></audio>
+    <audio id="snd-success" src="audio/confirm.mp3" preload="auto"></audio>
+    <audio id="snd-fail" src="audio/failed.wav" preload="auto"></audio>
+    <audio id="snd-hbd" src="audio/spacey-ambience.mp3" loop preload="auto"></audio>
+    <audio id="snd-alert" src="audio/alert.mp3" preload="auto"></audio>
+    <audio id="snd-hover" src="audio/hover.wav" preload="auto"></audio>
+    <audio id="snd-typing" src="audio/ketik.wav" preload="auto"></audio>
+    <audio id="snd-hbd-song" src="audio/birthday.wav" preload="auto"></audio>
+
+    <div id="screen-container" class="w-full max-w-2xl bg-slate-900/80 backdrop-blur-md border border-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl relative z-10 transition-all duration-500 min-h-[450px] flex flex-col justify-center items-center">
+        
+        <div id="scr-opening" class="screen flex flex-col items-center justify-center text-center space-y-6 min-h-[450px]">
+            <div id="text-container" class="min-h-[100px] flex flex-col items-center">
+                <h1 id="dynamic-text" class="font-game text-2xl md:text-4xl text-white tracking-widest"></h1>
+                <p id="sub-text" class="font-game text-sm text-slate-400 mt-2 opacity-0 transition-opacity duration-1000"></p>
+            </div>
+
+            <button id="start-btn" onclick="handleStart()" 
+                class="hidden font-game px-8 py-3 bg-transparent border-2 border-blue-500 text-blue-400 hover:text-white hover:bg-blue-600 hover:border-blue-400 rounded transition-all duration-300 hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] active:scale-95">
+                PRESS START
+            </button>
+        </div>
+
+        <div id="scr-password" class="screen hidden flex flex-col items-center text-center space-y-6 w-full">
+            <div class="font-game space-y-2">
+                <h2 class="text-red-500 text-2xl font-bold tracking-wider uppercase">Access Restricted.</h2>
+                <p class="text-xs text-slate-400">Only the birthday player may continue.</p>
+                <p class="text-xs text-slate-400">Hint : your nickname</p>
+            </div>
+            <div class="w-full max-w-xs space-y-3">
+                <input type="password" id="pass-input" placeholder="Enter access code..." class="w-full bg-black border-2 border-slate-700 rounded p-3 font-game text-center focus:outline-none focus:border-purple-500 text-purple-400 tracking-widest">
+                <button onclick="checkPassword()" class="w-full font-game py-2 bg-purple-700 hover:bg-purple-600 text-white rounded font-bold transition">AUTHENTICATE</button>
+            </div>
+            <p id="pass-feedback" class="font-game text-sm font-bold min-h-[20px]"></p>
+        </div>       
+
+        <div id="scr-questions" class="screen hidden flex flex-col items-center text-center space-y-8 w-full">
+            <div class="bg-black/50 border border-slate-700 rounded-xl p-4 w-full">
+                <p class="text-xs font-game text-left text-blue-400 mb-2"><i class="fa-solid fa-comment"></i> SYSTEM DIALOGUE</p>
+                <h3 id="question-text" class="text-lg font-semibold min-h-[60px] flex items-center justify-center">Pertanyaan 1</h3>
+            </div>
+            <div id="q-buttons-container" class="flex justify-center items-center gap-6 w-full min-h-[100px] relative">
+                <button id="btn-yes" onclick="answerQuestion(true)" class="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg transition transform hover:scale-105 min-w-[120px]">YES</button>
+                <button id="btn-no" onclick="answerQuestion(false)" class="px-8 py-3 bg-rose-600 text-white font-bold rounded-lg shadow-lg min-w-[120px] transition duration-200">NO</button>
+            </div>
+        </div>
+
+        <div id="scr-loading" class="screen hidden flex flex-col items-center text-center space-y-6 w-full">
+            <h2 class="font-game text-2xl text-purple-400 font-black tracking-widest animate-pulse">MISSION IN PROGRESS...</h2>
+            <div class="w-full max-w-sm bg-slate-950 h-4 rounded-full overflow-hidden border border-slate-800">
+                <div id="load-bar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-full w-0 transition-all duration-100"></div>
+            </div>
+            <div class="font-game text-xs text-slate-400 h-6 overflow-hidden max-w-xs">
+                <p id="load-subtitle" class="animate-bounce">Scanning system details...</p>
+            </div>
+            <button id="btn-continue" onclick="startMissionsSequence()" class="font-game px-8 py-3 bg-amber-500 hover:bg-amber-400 text-black font-black rounded border-b-4 border-amber-700 hidden animate-pulse">START TO CONTINUE</button>
+        </div>
+
+        <div id="scr-briefing" class="screen hidden flex flex-col items-center text-center space-y-6">
+            <div class="border-2 border-dashed border-amber-500 p-6 rounded-xl bg-amber-950/20 max-w-sm">
+                <h2 id="brief-title" class="font-game text-2xl text-amber-400 font-bold tracking-wider">MISSION</h2>
+                <p id="brief-desc" class="text-sm text-slate-300 mt-2">Mission objective goes here.</p>
+            </div>
+            <button id="btn-brief-ready" class="font-game px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded">READY</button>
+        </div>
+
+        <div id="scr-countdown" class="screen hidden flex flex-col items-center justify-center">
+            <h1 id="count-number" class="font-game text-8xl font-black text-white glow-blue animate-ping">3</h1>
+        </div>
+
+        <div id="scr-starhunt" class="screen hidden flex flex-col items-center w-full space-y-4">
+            <div class="flex justify-between w-full font-game border-b border-slate-700 pb-2 text-sm">
+                <span class="text-amber-400"><i class="fa-solid fa-star"></i> STAR HUNT</span>
+                <span id="star-counter" class="text-xl text-white font-bold">0 / 24</span>
+            </div>
+            <div id="star-arena" class="w-full h-64 bg-black/60 rounded-xl relative overflow-hidden border border-slate-800"></div>
+            <p class="text-xs text-slate-400 italic">Click/tap bintang yang muncul secepat mungkin!</p>
+        </div>
+
+        <div id="scr-survival" class="screen hidden flex flex-col items-center w-full space-y-4">
+            <div class="flex justify-between w-full font-game border-b border-slate-700 pb-2 text-sm">
+                <span class="text-rose-400"><i class="fa-solid fa-shield-halved"></i> STAY ALIVE</span>
+                <span id="surv-timer" class="text-xl text-rose-500 font-bold">24s</span>
+            </div>
+            <div id="surv-arena" class="w-full h-64 bg-black/60 rounded-xl relative overflow-hidden border border-slate-800 touch-none">
+                <div id="player" class="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-8 bg-blue-500 rounded-full border-2 border-white glow-blue transition-all duration-75 flex items-center justify-center text-xs"><i class="fa-solid fa-user-astronaut"></i></div>
+            </div>
+            <div class="flex justify-center gap-4 w-full md:hidden">
+                <button id="btn-left" class="bg-slate-800 p-4 rounded-lg flex-1 text-xl active:bg-slate-700"><i class="fa-solid fa-arrow-left"></i></button>
+                <button id="btn-right" class="bg-slate-800 p-4 rounded-lg flex-1 text-xl active:bg-slate-700"><i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+            <p class="text-xs text-slate-400 text-center">Gunakan tombol atau arrow keys <i class="fa-solid fa-arrow-left-long"></i> <i class="fa-solid fa-arrow-right-long"></i> di keyboard!</p>
+        </div>
+
+        <div id="scr-football" class="screen hidden flex flex-col items-center w-full space-y-4">
+            <div class="flex justify-between w-full font-game border-b border-slate-700 pb-2 text-sm">
+                <span class="text-emerald-400"><i class="fa-solid fa-futbol"></i> FINAL MATCH</span>
+                <span class="text-white">Score 1 Goal</span>
+            </div>
+            <div id="football-arena" class="w-full h-64 bg-emerald-950/40 rounded-xl relative overflow-hidden border border-emerald-800/50">
+                <div class="absolute top-4 left-1/2 -translate-x-1/2 w-48 h-12 border-4 border-b-0 border-white flex justify-between items-end">
+                    <div class="w-full h-full bg-white/10 repeating-linear-lines"></div>
+                </div>
+                <div id="keeper" class="absolute top-10 left-1/2 -translate-x-1/2 w-12 h-6 bg-rose-600 rounded border border-white text-[10px] flex items-center justify-center font-bold">GK</div>
+                <div id="ball" class="absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-8 bg-white text-black rounded-full flex items-center justify-center shadow-lg text-sm font-bold transition-all duration-500"><i class="fa-solid fa-futbol"></i></div>
+            </div>
+            <div class="flex justify-center gap-2 w-full">
+                <button onclick="shootFootball('left')" class="font-game bg-slate-800 hover:bg-emerald-700 px-4 py-2 text-xs rounded transition flex-1">SHOOT LEFT</button>
+                <button onclick="shootFootball('center')" class="font-game bg-slate-800 hover:bg-emerald-700 px-4 py-2 text-xs rounded transition flex-1">SHOOT CENTER</button>
+                <button onclick="shootFootball('right')" class="font-game bg-slate-800 hover:bg-emerald-700 px-4 py-2 text-xs rounded transition flex-1">SHOOT RIGHT</button>
+            </div>
+        </div>
+
+        <div id="scr-outcome" class="screen hidden flex flex-col items-center text-center space-y-6">
+            <h1 id="outcome-title" class="font-game text-4xl font-black">STATUS</h1>
+            <p id="outcome-subtext" class="text-slate-300 max-w-xs"></p>
+            <button id="outcome-btn" class="font-game px-8 py-3 text-black font-bold rounded shadow-lg transition transform hover:scale-105"></button>
+        </div>
+
+        <div id="scr-lobby" class="screen hidden flex flex-col w-full space-y-6">
+            <div class="text-center font-game border-b border-slate-800 pb-4">
+                <div class="inline-block px-3 py-1 bg-purple-950/80 border border-purple-500/30 text-purple-400 text-xs rounded-full mb-2 animate-pulse"><i class="fa-solid fa-trophy"></i> Achievement Unlocked: Birthday Player</div>
+                <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">MISSION COMPLETED</h2>
+                <p class="text-xs text-slate-400 tracking-widest">WELCOME TO THE GAME LOBBY</p>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 text-center text-xs md:text-sm font-game">
+                <button onclick="openTab('tab-cake')" class="tab-btn bg-slate-800 p-2 rounded-t-lg border-b-2 border-purple-500 font-bold">🎂 CAKE</button>
+                <button onclick="openTab('tab-playlist')" class="tab-btn bg-slate-950/60 p-2 rounded-t-lg border-b-2 border-transparent text-slate-400">🎵 TRACK</button>
+                <button onclick="openTab('tab-wishes')" class="tab-btn bg-slate-950/60 p-2 rounded-t-lg border-b-2 border-transparent text-slate-400">📸 WISHES</button>
+                <button onclick="openTab('tab-ending')" class="tab-btn bg-slate-950/60 p-2 rounded-t-lg border-b-2 border-transparent text-slate-400">🌌 END</button>
+            </div>
+
+            <div class="bg-black/40 border border-slate-800 p-4 rounded-b-xl min-h-[250px] flex items-center justify-center">
+                
+                <div id="tab-cake" class="tab-content flex flex-col items-center text-center space-y-4">
+                    <h3 class="font-game text-amber-400 text-sm tracking-wider">MAKE A WISH DULU KAK!</h3>
+                    <div id="cake-wrapper" onclick="blowCandle()" class="cursor-pointer text-6xl relative animate-bounce duration-1000 my-4 select-none">
+                        <span id="candle-flame" class="absolute -top-6 left-1/2 -translate-x-1/2 text-xl text-orange-500 animate-pulse">🔥</span>
+                        🎂
+                    </div>
+                    <p id="cake-status" class="text-sm italic text-slate-400">Klik kue untuk meniup lilin!</p>
+                    <button id="btn-play-song" onclick="playBirthdaySong()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-transform transform hover:scale-105">
+                        <i class="fa-solid fa-cake-candles"></i> PLAY SONG
+                    </button>
+                </div>
+
+                <div id="tab-playlist" class="tab-content hidden flex flex-col items-center text-center space-y-4 w-full">
+                    <p class="text-xs font-game text-purple-400">SOUNDTRACK WHILE PLAYING LIFE</p>
+                    
+                    <div class="w-full max-w-sm">
+                        <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/playlist/3zmpSOryXBEZEY5j11AUHJ?utm_source=generator" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                    </div>
+                </div>
+
+                <div id="tab-wishes" class="tab-content hidden flex flex-col items-center space-y-6 w-full max-h-[320px] overflow-y-auto pr-2">
+                    <p class="text-xs font-game text-blue-400 text-center tracking-widest">MISSION MEMORIES GALLERY</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 w-full">
+                        
+                        <div class="group bg-white p-2 pb-6 rounded shadow-lg transform -rotate-2 hover:rotate-0 transition duration-300 relative overflow-hidden">
+                            <div class="relative w-full h-32 overflow-hidden rounded-sm">
+                                <img src="pic/mefi1.jpg" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-300" alt="Moment">
+                                
+                                <div class="absolute inset-0 bg-black/70 flex items-center justify-center text-center p-3 opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <p class="font-sans text-[10px] text-white leading-tight font-medium">“Pertama kali aku liat kamu facecam. jadi, kapan facecam?😝”</p>
+                                </div>
+                            </div>
+                            <p class="font-sans text-[10px] font-semibold text-center mt-2 text-slate-900">First Facecam</p>
+                        </div>
+
+                        <div class="group bg-white p-2 pb-6 rounded shadow-lg transform rotate-2 hover:rotate-0 transition duration-300 relative overflow-hidden">
+                            <div class="relative w-full h-32 overflow-hidden rounded-sm">
+                                <img src="pic/mefi2.jpg" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-300" alt="Moment">
+                                
+                                <div class="absolute inset-0 bg-black/70 flex items-center justify-center text-center p-3 opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <p class="font-sans text-[10px] text-white leading-tight font-medium">“Mefi + Langit malam = Perfect!”</p>
+                                </div>
+                            </div>
+                            <p class="font-sans text-[10px] font-semibold text-center mt-2 text-slate-900">Night Sky</p>
+                        </div>
+
+                        <div class="group bg-white p-2 pb-6 rounded shadow-lg transform rotate-1 hover:rotate-0 transition duration-300 relative overflow-hidden">
+                            <div class="relative w-full h-32 overflow-hidden rounded-sm">
+                                <img src="pic/mefi3.jpg" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-300" alt="Moment">
+                                
+                                <div class="absolute inset-0 bg-black/70 flex items-center justify-center text-center p-3 opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <p class="font-sans text-[10px] text-white leading-tight font-medium">“ini foto Mefi paling keren menurut aku”</p>
+                                </div>
+                            </div>
+                            <p class="font-sans text-[10px] font-semibold text-center mt-2 text-slate-900">City Lights</p>
+                        </div>
+
+                        <div class="group bg-white p-2 pb-6 rounded shadow-lg transform -rotate-3 hover:rotate-0 transition duration-300 relative overflow-hidden">
+                            <div class="relative w-full h-32 overflow-hidden rounded-sm">
+                                <img src="pic/mefi4.jpg" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-300" alt="Moment">
+                                
+                                <div class="absolute inset-0 bg-black/70 flex items-center justify-center text-center p-3 opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <p class="font-sans text-[10px] text-white leading-tight font-medium">“Kedepannya stop jadi backburner apalagi second choice yaa 😡”</p>
+                                </div>
+                            </div>
+                            <p class="font-sans text-[10px] font-semibold text-center mt-2 text-slate-900">Oops!</p>
+                        </div>
+
+                        <div class="group bg-white p-2 pb-6 rounded shadow-lg transform rotate-2 hover:rotate-0 transition duration-300 relative overflow-hidden">
+                            <div class="relative w-full h-32 overflow-hidden rounded-sm">
+                                <img src="pic/mefi5.jpg" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-300" alt="Moment">
+                                
+                                <div class="absolute inset-0 bg-black/70 flex items-center justify-center text-center p-3 opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <p class="font-sans text-[10px] text-white leading-tight font-medium">“Jujur, aku ngga mau minta maaf karena udah ngecapture diem-diem. soalnya disini kamu keliatan happy 🤭”</p>
+                                </div>
+                            </div>
+                            <p class="font-sans text-[10px] font-semibold text-center mt-2 text-slate-900">Morning Run</p>
+                        </div>
+
+                        <div class="group bg-white p-2 pb-6 rounded shadow-lg transform -rotate-1 hover:rotate-0 transition duration-300 relative overflow-hidden">
+                            <div class="relative w-full h-32 overflow-hidden rounded-sm">
+                                <img src="pic/mefi6.jpg" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-300" alt="Moment">
+                                
+                                <div class="absolute inset-0 bg-black/70 flex items-center justify-center text-center p-3 opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <p class="font-sans text-[10px] text-white leading-tight font-medium">“ini paling gemes sih”</p>
+                                </div>
+                            </div>
+                            <p class="font-sans text-[10px] font-semibold text-center mt-2 text-slate-900">AI doing good</p>
+                        </div>
+
+                        <div class="group bg-white p-2 pb-6 rounded shadow-lg transform rotate-3 hover:rotate-0 transition duration-300 relative overflow-hidden">
+                            <div class="relative w-full h-32 overflow-hidden rounded-sm">
+                                <img src="pic/mefi7.jpg" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-300" alt="Moment">
+                                
+                                <div class="absolute inset-0 bg-black/70 flex items-center justify-center text-center p-3 opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <p class="font-sans text-[10px] text-white leading-tight font-medium">“yang kayak Mefi di dunia nyata ada ngga ya 😔”</p>
+                                </div>
+                            </div>
+                            <p class="font-sans text-[10px] font-semibold text-center mt-2 text-slate-900">Mefi!</p>
+                        </div>
+
+                        <div class="group bg-white p-2 pb-6 rounded shadow-lg transform -rotate-2 hover:rotate-0 transition duration-300 relative overflow-hidden">
+                            <div class="relative w-full h-32 overflow-hidden rounded-sm">
+                                <img src="pic/mefi8.jpg" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-300" alt="Moment">
+                                
+                                <div class="absolute inset-0 bg-black/70 flex items-center justify-center text-center p-3 opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <p class="font-sans text-[10px] text-white leading-tight font-medium">“Yeay, karakter kita satu frame!”</p>
+                                </div>
+                            </div>
+                            <p class="font-sans text-[10px] font-semibold text-center mt-2 text-slate-900">Sky x Mefi</p>
+                        </div>
+
+                    </div>
+
+                    <div class="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2 text-xs leading-relaxed text-slate-300 font-sans mt-4">
+                        <div class="text-blue-400 font-game text-[10px]"><i class="fa-solid fa-heart"></i> LETTER TO MEFI:</div>
+                        <p>Selamat ulang tahun, Kak Mefi aka Mas Fahri! Makasih ya udah tetap hidup sampai hari ini, udah berjuang ngelewatin berbagai rintangan hidup yang kadang nggak masuk akal.</p>
+                        <p>Mungkin ada waktu dimana kakak ngerasa dunia ini berat, dan sebagai laki-laki harus tetep kuat dan memendam semua itu. Tapi tau ngga? laki-laki juga manusia, jadi jangan merasa kalau kamu harus pura-pura kuat dan memendam semua sendiri.</p>
+                        <p>Semoga kakak bisa menemukan dan mempercayai seseorang atau sesuatu yang paling nyaman dan aman sehingga bisa menjadi tempat cerita, sharing, berkeluh kesah, atau bahkan tempat kakak pulang. Didunia yang seluas ini, kamu ngga boleh menghadapi hidup ini sendirian.</p>
+                        <p>Semoga tahun ini kakak dipertemukan sama hal-hal baik, dipertemukan dengan kebahagiaan yang berkali-kali lipat, rezeki makin lancar, karir makin sukses, dan selalu dilindungin dari segala hal negatif yang ada.</p>
+                        <p>Jaga kesehatan, jaga juga lima waktunya, jaga moodnya biar tetep bahagia, tetap jadi orang yang baik untuk diri kakak sediri, harus sayang sama diri sendiri, jangan lupa selalu ucapin makasih sama diri sendiri. Aku aja sayang dan berterimakasih sama kamu kak, masa kamu engga?</p>
+                        <p>Jangan lupa makan yang enak, minum air putih yang banyak, dan TIDUR YANG CUKUP! kerja pagi, tapi tengah malam masih main, istirahatnya kapan ya kak?</p>
+                        <p>Apa lagi ya? Semoga kakak mendapatkan apa yang kakak inginkan. Lakuin apa yang mau kakak lakuin. Jangan takut dan jangan ragu!</p>
+                        <p>Intinya doa yang terbaik deh buat kakak. Boleh sedih, sakit, marah, luapin aja semua emosi yang ada di dalam diri kakak, tapi luapin ketempat yang bener dan jangan lama-lama ya.</p>
+                        <p>Apapun yang terjadi, percayalah aku bakal tetap dukung kakak. If i care about you, it's real.</p>
+                        <p>Happy birthday kak Mefi! Loveyou ❤︎</p>
+                    </div>
+                </div>
+
+                <div id="tab-ending" class="tab-content hidden flex flex-col items-center text-center space-y-6 w-full py-4">
+                    <div id="credits-area" class="space-y-4 font-game text-sm text-slate-300 opacity-0 transition-opacity duration-1000">
+                        <p class="text-xs text-purple-400">--- END TRANSMISSION ---</p>
+                        <p class="animate-pulse">Thanks for finishing every mission.</p>
+                        <p>And thanks for existing too.</p>
+                        <h2 class="text-2xl font-bold text-white tracking-widest glow-blue">HAPPY BIRTHDAY</h2>
+                        <p class="text-xs text-slate-500">See you in the next game.</p>
+                    </div>
+                    <button id="btn-trigger-credits" onclick="runCredits()" class="font-game text-xs px-4 py-2 bg-slate-900 border border-slate-700 hover:border-purple-500 rounded text-slate-400 hover:text-white transition">ROLL CREDITS <i class="fa-solid fa-play ml-1"></i></button>
+                    <div id="the-end-zone" class="hidden font-game text-xl group mt-4">
+                        <span class="text-white group-hover:hidden transition-all">THE END?</span>
+                        <span class="text-purple-400 hidden group-hover:inline transition-all italic text-sm">to be continued...</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <button id="mute-btn" onclick="toggleMute()" class="fixed top-4 right-4 z-50 text-white hover:text-blue-400">
+        <i class="fa-solid fa-volume-high"></i>
+    </button>
+
+    <script src="script.js"></script>
+</body>
+</html>
